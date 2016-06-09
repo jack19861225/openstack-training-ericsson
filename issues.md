@@ -46,4 +46,7 @@ rm -rf /var/lib/mysql/mysql.sock然后重启节点
 generate-subunit : command not found
 sudo apt-get install python-pip
 
+安装目录不能有任何内容
+
+
 ```
