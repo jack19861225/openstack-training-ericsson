@@ -48,5 +48,18 @@ sudo apt-get install python-pip
 
 安装目录不能有任何内容
 
+pip 太慢
+
+需要修改成阿里源
+
+root/ 
+
+mkdir ~/.pip
+vi pip.conf
+[global]
+index-url = http://mirrors.aliyun.com/pypi/simple
+trusted-host= mirrors.aliyun.com
+
+
 
 ```
