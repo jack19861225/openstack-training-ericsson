@@ -43,4 +43,7 @@ rm -rf /var/lib/mysql/mysql.sock然后重启节点
 关闭devstack的所有screen
 解决：screen -wipe
 
+generate-subunit : command not found
+sudo apt-get install python-pip
+
 ```
