@@ -63,5 +63,11 @@ trusted-host= mirrors.aliyun.com
 解决screen Cannot open your terminal
 userB在 su - userA以后，执行如下命令即可:
 script /dev/null
+
+
+export OS_TENANT_NAME=admin
+export OS_USERNAME=admin
+export OS_PASSWORD=123456
+export OS_AUTH_URL="http://192.168.6.131:5000/v2.0/"
  
 ```
