@@ -60,6 +60,8 @@ vi pip.conf
 index-url = http://mirrors.aliyun.com/pypi/simple
 trusted-host= mirrors.aliyun.com
 
-
-
+解决screen Cannot open your terminal
+userB在 su - userA以后，执行如下命令即可:
+script /dev/null
+ 
 ```
