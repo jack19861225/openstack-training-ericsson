@@ -70,4 +70,7 @@ export OS_USERNAME=admin
 export OS_PASSWORD=123456
 export OS_AUTH_URL="http://192.168.6.131:5000/v2.0/"
  
+source openrc demo demo
+source openrc admin admin
+ 
 ```
