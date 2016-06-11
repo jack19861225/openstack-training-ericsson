@@ -1,0 +1,104 @@
+############
+# Metadata #
+############
+[composite:metadata]
+use = egg:Paste#urlmap
+/: meta
+利用urlmap将请求执行执行到 meta
+
+[pipeline:meta]
+pipeline = ec2faultwrap logrequest metaapp
+这里使用pipeline,分别使用ec2faultwrap, logrequest 针对metaapp进行过滤.由此也可以看出openstack为了兼容EC2引入的metatdata服务，并且使用一个神奇的地址169.254.169.254
+
+[app:metaapp]
+paste.app_factory = nova.api.metadata.handler:MetadataRequestHandler.factory
+定义个app,指向到nova中MetadataRequestHandler类
+
+#######
+# EC2 #
+#######
+[filter:ec2faultwrap]
+paste.filter_factory = nova.api.ec2:FaultWrapper.factory
+定义一个filter,直接指向到nova中的代码
+
+[filter:logrequest]
+paste.filter_factory = nova.api.ec2:RequestLogging.factory
+定义一个filter,指向到nova中RequestLogging.factory方法
+
+#############
+# OpenStack #
+#############
+
+[composite:osapi_compute]
+use = call:nova.api.openstack.urlmap:urlmap_factory
+/: oscomputeversions
+/v1.1: openstack_compute_api_v2
+/v2: openstack_compute_api_v2
+/v2.1: openstack_compute_api_v21
+/v3: openstack_compute_api_v3
+这里利用composite将xxx/xxx形式的请求交给oscomputeversions，形似xxxx/v1.1/xxxxx请求交给openstack_compute_api_v2，来实现API版本控制
+
+[composite:openstack_compute_api_v2]
+use = call:nova.api.auth:pipeline_factory
+noauth = compute_req_id faultwrap sizelimit noauth ratelimit osapi_compute_app_v2
+keystone = compute_req_id faultwrap sizelimit authtoken keystonecontext ratelimit osapi_compute_app_v2
+keystone_nolimit = compute_req_id faultwrap sizelimit authtoken keystonecontext osapi_compute_app_v2
+针对openstack_compute_api_v2的实现来看，首先调用了nova.api.auth中pipeline_factory方法,从源代码可以看出，实际上_load_pipeline调用了keystone，
+keystone属于是一个filter的集合，请求会依次通过前面的这些filter，最后到达osapi_compute_app_v2这个app
+
+[composite:openstack_compute_api_v21]
+use = call:nova.api.auth:pipeline_factory_v21
+noauth = request_id faultwrap sizelimit noauth osapi_compute_app_v21
+keystone = request_id faultwrap sizelimit authtoken keystonecontext osapi_compute_app_v21
+
+[composite:openstack_compute_api_v3]
+use = call:nova.api.auth:pipeline_factory_v21
+noauth = request_id faultwrap sizelimit noauth_v3 osapi_compute_app_v3
+keystone = request_id faultwrap sizelimit authtoken keystonecontext osapi_compute_app_v3
+
+[filter:request_id]
+paste.filter_factory = nova.openstack.common.middleware.request_id:RequestIdMiddleware.factory
+
+[filter:compute_req_id]
+paste.filter_factory = nova.api.compute_req_id:ComputeReqIdMiddleware.factory
+
+[filter:faultwrap]
+paste.filter_factory = nova.api.openstack:FaultWrapper.factory
+
+[filter:noauth]
+paste.filter_factory = nova.api.openstack.auth:NoAuthMiddleware.factory
+
+[filter:noauth_v3]
+paste.filter_factory = nova.api.openstack.auth:NoAuthMiddlewareV3.factory
+
+[filter:ratelimit]
+paste.filter_factory = nova.api.openstack.compute.limits:RateLimitingMiddleware.factory
+
+[filter:sizelimit]
+paste.filter_factory = nova.api.sizelimit:RequestBodySizeLimiter.factory
+
+[app:osapi_compute_app_v2]
+paste.app_factory = nova.api.openstack.compute:APIRouter.factory
+该app直接调用了nova.api.openstack.compute中的APIRouter类中的factory函数。
+
+[app:osapi_compute_app_v21]
+paste.app_factory = nova.api.openstack.compute:APIRouterV21.factory
+
+[app:osapi_compute_app_v3]
+paste.app_factory = nova.api.openstack.compute:APIRouterV3.factory
+
+[pipeline:oscomputeversions]
+pipeline = faultwrap oscomputeversionapp
+
+[app:oscomputeversionapp]
+paste.app_factory = nova.api.openstack.compute.versions:Versions.factory
+
+##########
+# Shared #
+##########
+
+[filter:keystonecontext]
+paste.filter_factory = nova.api.auth:NovaKeystoneContext.factory
+
+[filter:authtoken]
+paste.filter_factory = keystonemiddleware.auth_token:filter_factory
